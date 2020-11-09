@@ -1,144 +1,170 @@
-Require Export Composition.
+Require Export Relation.
 
-Variable N X: Class.
-Hypothesis N_ : M N.
-Hypothesis X_ : M X.
-
-(* 二項関係全体からなる集合 *)
-Definition Rels := Power (X × X).
-
-(* 個人から選考を導く写像（添字付きの二項関係） *)
-Definition Rn :=
-  {: N × Rels | fun f => f : N → Rels :}.
-
-(* 個人の選好全体から社会的選好を導く写像（アロー型社会厚生関数） *)  
-Definition Arrow :=
-  {: Rn × Rels | fun f => f : Rn → Rels :}.
-
-(* 二項関係から非対称成分を取り出す演算 *)  
-Definition pref R := 
-  {: R | fun p => exists x y, M x /\ M y /\ p = <|x,y|> /\ x <> y :}.  
-
-(* 個人の選好の反射性 *)  
-Axiom ipref_refl :
-  forall i R x, i ∈ N-> R ∈ Rn -> x ∈ X -> 
-  <|x,x|> ∈ Value R i.
-
-(* 個人の選好の完備性 *)
-Axiom ipref_comp :
-  forall i R x y, i ∈ N -> R ∈ Rn -> x ∈ X -> y ∈ X ->
-  <|x,y|> ∈ Value R i \/ <|y,x|> ∈ Value R i.
-
-(* 個人の選好の推移性 *)
-Axiom ipref_trans :     
-  forall i R x y z, i ∈ N -> R ∈ Rn -> x ∈ X -> y ∈ X -> z ∈ X ->
-  <|x,y|> ∈ Value R i /\ <|y,z|> ∈ Value R i -> <|x,z|> ∈ Value R i.
-
-(*　社会選好の推移性 *)
-Definition spref_trans f (_ : f ∈ Arrow):=
-    forall R x y z, R ∈ Rn -> x ∈ X -> y ∈ X -> z ∈ X ->
-    <|x,y|> ∈ Value f R /\ <|y,z|> ∈ Value f R -> <|x,z|> ∈ Value f R.
-
-(* 社会選好の準推移性 *)      
-Definition spref_quasitrans f (_ : f ∈ Arrow):=
-  forall R x y z, R ∈ Rn -> x ∈ X -> y ∈ X -> z ∈ X ->
-  <|x,y|> ∈ Value f (pref R) /\ <|y,z|> ∈ Value f (pref R) -> <|x,z|> ∈ Value f (pref R).     
-
-(* 社会選好の非循環性　（清楚的である事と同値？） *)    
-Definition spref_acycl f (_ : f ∈ Arrow) :=
-    forall M R, R ∈ Rn ->  M ⊆ N -> 
-    exists m, m ∈ M /\ (forall n, n ∈ M -> ~ <|n,m|> ∈ Value f R).
-
-(* パレート原理 *)
-Definition Pareto f (_ : f ∈ Arrow):=
-  forall R i x y, R ∈ Rn -> i ∈ N -> x ∈ X -> y ∈ X ->
-  <|x,y|> ∈ Value (pref R) i -> <|x,y|> ∈ Value f (pref R).
-
-(* 独立性 *)    
-Definition Independent f (_ : f ∈ Arrow ):=
-  forall R R' i x y, R ∈ Rn -> R' ∈ Rn -> i ∈ N -> x ∈ X -> y ∈ X ->
-  (<|x,y|> ∈ Value R i <-> <|x,y|> ∈ Value R' i) ->
-  (<|x,y|> ∈ Value f R <-> <|x,y|> ∈ Value f R').
-
-(* 非独裁性 *)    
-Definition Dictatorial f (_ : f ∈ Arrow) :=
-  not (exists i, i ∈ N /\ 
-  (forall R x y, R ∈ Rn -> x ∈ X -> y ∈ X ->
-   <|x,y|> ∈ Value (pref R) i -> <|x,y|> ∈ Value f (pref R))).
-
-(* 決定的 *)    
-Definition Desidable f (_ : f ∈ Arrow)  G (_ : G ⊆ N) :=
-    forall R i x y, R ∈ Rn -> i ∈ G -> x ∈ X -> y ∈ X ->
-    <|x,y|> ∈ Value (pref R) i -> <|x,y|> ∈ Value f (pref R).
+Axiom X : Class.
+Axiom N : Class.
+Axiom X_ : M X.
+Axiom N_ : M N.
+Axiom ex_N : exists i, i ∈ N.
 
 
-      
-Lemma desidable_extend f (fA : f ∈ Arrow) :
-  Independent f fA -> Dictatorial f fA -> spref_quasitrans f fA ->
-  forall R (RRn : R ∈ Rn) G (GN : G ⊆ N), 
-  (exists x y, x ∈ X /\ y ∈ X /\  (forall i, i ∈ G -> <|x,y|> ∈ Value (pref R) i)) ->
-  Desidable f fA G GN.
+Definition Pref R :=
+  {: R | fun p => exists x y, M x /\ M y /\ p = <|x,y|> /\ ~ <|y,x|> ∈ R:}.
+
+Definition Ident R :=
+  {: R | fun p => exists x y, M x /\ M y /\ p = <|x,y|> /\ <|y,x|> ∈ R:}.  
+
+Definition T :=
+  {: Power (X × X) | fun R => Transitive R X /\ Connected R X /\ Reflexive R X :}.  
+
+(* ρ ∈ Tn ρ ≈ (R₁, R₂,...,Rn) *)  
+Definition Tn :=
+  {: N × T | fun f => f : N → T :}.
+
+Definition Φ :=
+  {: Tn × T | fun φ => φ : Tn → T :}.
+
+Axiom Pareto :
+  forall φ ρ x y, φ ∈ Φ -> ρ ∈ Tn -> x ∈ X -> y ∈ X ->
+  (forall i, i ∈ N -> <|x,y|> ∈ Pref (Value ρ i)) -> <|x,y|> ∈ Pref (Value φ ρ).
+
+Axiom Independence :
+  forall f R R' x y, f ∈ Φ -> R ∈ Tn -> R' ∈ Tn -> x ∈ X -> y ∈ X ->
+  (forall i, i ∈ N -> 
+  (<|x,y|> ∈ Value R i -> <|x,y|> ∈ Value R' i) /\ (<|y,x|> ∈ Value R i -> <|y,x|> ∈ Value R' i)) -> 
+  <|x,y|> ∈ Value f R -> <|x,y|> ∈ Value f R'.
+
+Axiom Nondictator :
+  forall φ, φ ∈ Φ ->
+  ~ exists i, (i ∈ N /\ (forall ρ x y, ρ ∈ Tn -> x ∈ X -> y ∈ X -> <|x,y|> ∈ Value ρ i -> <|x,y|> ∈ Value φ ρ)).
+
+Definition Impossibility := Φ = ∅.
+
+Theorem pref x y R (xX : x ∈ X) (yX : y ∈ X):
+  <|x,y|> ∈ Pref R <-> <|x,y|> ∈ R /\ ~ <|y,x|> ∈ R.
 Proof.
-  unfold Independent.
-  unfold Dictatorial.
-  unfold spref_quasitrans.
-  unfold Desidable.
-  intros HI HD HT R RRn G GN H.
-  intros R_ i x_ y_ R_Rn iG x_X y_X xy_Pi.
-  induction H as [x]; induction H as [y].
-  induction H as [xX]; induction H as [yX].
-  specialize (H i iG).
-  move : HD.
-  rewrite <- allnot_notexists.
+assert (x_ : M x) by (by exists X).
+assert (y_ : M y) by (by exists X).
+split => [H | H].
++ apply separation in H.
+  induction H.
+  apply (conj H).
+  induction H0 as [a]; induction H0 as [b].
+  induction H0 as [a_]; induction H0 as [b_].
+  induction H0 as [xyab notbaR].
+  apply (OP_eq x y a b x_ y_ a_ b_) in xyab.
+  by induction xyab; subst a b.
++ induction H.
+  apply separation.
+  apply (conj H).
+  by exists x; exists y.
+Qed.
+
+Theorem ident x y R (xX : x ∈ X) (yX : y ∈ X):
+  <|x,y|> ∈ Ident R <-> <|x,y|> ∈ R /\ <|y,x|> ∈ R.
+Proof.
+assert (x_ : M x) by (by exists X).
+assert (y_ : M y) by (by exists X).
+split => [H | H].
++ apply separation in H.
+  induction H.
+  apply (conj H).
+  induction H0 as [a]; induction H0 as [b].
+  induction H0 as [a_]; induction H0 as [b_].
+  induction H0 as [xyab notbaR].
+  apply (OP_eq x y a b x_ y_ a_ b_) in xyab.
+  by induction xyab; subst a b.
++ induction H.
+  apply separation.
+  apply (conj H).
+  by exists x; exists y.
+Qed.
+
+Theorem pref_ord x y R (xX : x ∈ X) (yX : y ∈ X):
+  <|x,y|> ∈ Pref R -> <|x,y|> ∈ R.
+Proof.
+  rewrite (pref x y R xX yX ).
   intro.
-  specialize (H0 i).
-  apply DeMorgan_notand in H0.
+  apply H.
+Qed. 
+
+Theorem Ri_ R i :
+  R ∈ Tn -> i ∈ N -> M (Value R i).
+Proof.
+  intros RTn iN. 
+  apply separation in RTn.
+  induction RTn.
   induction H0.
-  case (H0 (GN i iG)).
-  assert (iN : i ∈ N) by (apply (GN i iG)).
-  case (ExcludedMiddle (x = x_)) as [xx_ | notxx_].
-  + subst x_.
-    case (ExcludedMiddle (y = y_)) as [yy_ | notyy_].
-    - subst y_.
-      specialize (HI R R_ i x y RRn R_Rn (GN i iG) xX yX).
-      case (ExcludedMiddle (x = y)) as [xy | notxy].
-      * subst y.
-        assert ( <| x, x |> ∈ Value R i <-> <| x, x |> ∈ Value R_ i).
-          split => [_ | _].
-          by apply ipref_refl.
-          by apply ipref_refl.
-        specialize (HI H1).
+  induction H1.
+  induction H0.
+  rewrite <- H1 in iN.
+  specialize (value R i H3 iN) as V.
+  apply V.
+Qed.  
+
+
+Theorem Ri_T : 
+  forall R i, R ∈ Tn -> i ∈ N -> Value R i ∈ T.
+Proof.
+  intros R i RTn iX.
+  apply separation in RTn.
+  induction RTn.
+  induction H0.
+  induction H1.
+  induction H0.  
+  rewrite <- H1 in iX.
+  specialize (value R i H3 iX) as V.
+  induction V.
+  apply H2.
+  apply ran.
+  done.
+  assert (i_ : Axioms.M i) by (by exists (Dom R)).
+  by exists i.
+Qed.  
+
+Theorem fR_T :
+  forall f R, f ∈ Φ -> R ∈ Tn -> Value f R ∈ T.
+Proof.
+  intros f R fΦ RTn.
+  apply separation in fΦ.
+  induction fΦ.
+  induction H0.
+  induction H0.
+  induction H1.
+  rewrite <- H1 in RTn.
+  specialize (value f R H2 RTn) as v.
+  induction v.
+  apply H3.
+  apply ran.
+  done.
+  assert (R_ : M R) by (by exists (Dom f)).
+  by exists R.
+Qed.
+
+Theorem fR_ f R :
+  f ∈ Φ -> R ∈ Tn -> M (Value f R).
+Proof.
+  intros fΦ RTn.
+  apply separation in fΦ.
+  induction fΦ.
+  induction H0.
+  induction H0.
+  induction H1.
+  rewrite <- H1 in RTn.
+  specialize (value f R H2 RTn) as v.
+  apply v.
+Qed.
 
 
 
-  + move : H0.
-    rewrite notall_existsnot.
-    intro.
-    induction H0 as [R'].
-    move : H0.
-    rewrite notall_existsnot.
-    intro.
-    induction H0 as [x'].
-    move : H0.
-    rewrite notall_existsnot.
-    intro.
-    induction H0 as [y'].
+
+
+
+
+
+
     
 
+  
 
 
 
-    
-
-
-
-
-
-
-
-
-
-
-
-
-    
